@@ -71,7 +71,7 @@ export const SwipeableCard = ({
 
   const pan = Gesture.Pan()
     .onTouchesDown(() => {
-      cardScale.value = withTiming(0.8);
+      cardScale.value = withTiming(0.9);
     })
     .onTouchesUp(() => {
       cardScale.value = withTiming(1);
