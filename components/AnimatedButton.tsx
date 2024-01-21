@@ -9,15 +9,17 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
+type IAnimatedButtonProps = Omit<PressableProps, "children"> & {
+  children?: React.ReactNode;
+  _animatedWrapperStyle?: ViewProps["style"];
+};
+
 export const AnimatedButton = ({
   children,
   style,
   _animatedWrapperStyle,
   ...props
-}: Omit<PressableProps, "children"> & {
-  children?: React.ReactNode;
-  _animatedWrapperStyle?: ViewProps["style"];
-}) => {
+}: IAnimatedButtonProps) => {
   const scaleValue = useSharedValue(0);
   const opacityValue = useSharedValue(0);
 
