@@ -1,5 +1,5 @@
-import React from "react";
-import { Dimensions, Text } from "react-native";
+import React, { useState } from "react";
+import { Dimensions, StyleSheet, Text } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Extrapolate,
@@ -13,33 +13,46 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-const width = Dimensions.get("window").width;
+interface ISwipeableCardProps {
+  swipeDirection: "LEFT" | "RIGHT" | "";
+  setSwipeDirection: (direction: "LEFT" | "RIGHT" | "") => void;
+  todos: any;
+}
+
+const windowWidth = Dimensions.get("window").width;
 const LAST_SWIPABLE_POINT = 120;
-const DURATION = 600;
+const DURATION = 700;
+const DELAY = 200;
 
 export const SwipeableCard = ({
-  updateArr,
-  cardElements,
-  swipe,
-  setSwipe,
-}: any) => {
-  const offset = useSharedValue(0);
-  const initialAniamtion = useSharedValue(0);
-  const absoluteX = useSharedValue(0);
+  swipeDirection,
+  setSwipeDirection,
+  todos,
+}: ISwipeableCardProps) => {
+  const swipeOffset = useSharedValue(0);
+  const initialAnimation = useSharedValue(0);
   const cardScale = useSharedValue(0);
+
+  const [currentTodo, setCurrentTodo] = useState(0);
+  const [nextTodo, setNextTodo] = useState(currentTodo + 1);
+
+  const currentTodoData = todos[currentTodo];
+  const nextTodoData = todos[nextTodo];
 
   const resetAnimations = () => {
     "worklet";
-    initialAniamtion.value = 0;
+    initialAnimation.value = 0;
+    swipeOffset.value = 0;
     cardScale.value = 0;
-    initialAniamtion.value = withRepeat(
+
+    cardScale.value = withRepeat(
       withTiming(1, {
         duration: DURATION,
       }),
       1,
       false
     );
-    cardScale.value = withRepeat(
+    initialAnimation.value = withRepeat(
       withTiming(1, {
         duration: DURATION,
       }),
@@ -51,10 +64,8 @@ export const SwipeableCard = ({
   const onAnimationComplete = (isFinished?: boolean) => {
     "worklet";
     if (isFinished) {
-      runOnJS(setSwipe)("");
-      runOnJS(updateArr)();
-      offset.value = 0;
-      resetAnimations();
+      runOnJS(setCurrentTodo)(nextTodo);
+      runOnJS(setSwipeDirection)("");
     }
   };
 
@@ -66,13 +77,11 @@ export const SwipeableCard = ({
       cardScale.value = withTiming(1);
     })
     .onChange((event) => {
-      const absX = event.absoluteX;
       const translationX = event.translationX;
       const velocityX = event.velocityX;
 
       if (Math.abs(velocityX) > 0) {
-        offset.value = translationX;
-        absoluteX.value = absX;
+        swipeOffset.value = translationX;
       }
     })
     .onFinalize((event) => {
@@ -80,88 +89,87 @@ export const SwipeableCard = ({
       const velocityX = event.velocityX;
 
       if (Math.abs(velocityX) > 0) {
-        absoluteX.value = absX;
-
         if (
-          absoluteX.value <= LAST_SWIPABLE_POINT ||
-          Math.abs(width - absoluteX.value) <= LAST_SWIPABLE_POINT
+          absX <= LAST_SWIPABLE_POINT ||
+          Math.abs(windowWidth - absX) <= LAST_SWIPABLE_POINT
         ) {
-          if (absoluteX.value <= LAST_SWIPABLE_POINT) {
-            offset.value = withTiming(
-              -width,
+          if (absX <= LAST_SWIPABLE_POINT) {
+            swipeOffset.value = withTiming(
+              -windowWidth,
               { duration: DURATION },
               onAnimationComplete
             );
-          } else if (Math.abs(width - absoluteX.value) <= LAST_SWIPABLE_POINT) {
-            offset.value = withTiming(
-              width,
+          } else if (Math.abs(windowWidth - absX) <= LAST_SWIPABLE_POINT) {
+            swipeOffset.value = withTiming(
+              windowWidth,
               { duration: DURATION },
               onAnimationComplete
             );
           }
         } else {
-          offset.value = withTiming(0);
+          swipeOffset.value = withTiming(0);
         }
       }
     });
 
   React.useEffect(() => {
     resetAnimations();
-  }, []);
+    setNextTodo((prev) => prev + 1);
+  }, [currentTodoData]);
 
   React.useEffect(() => {
-    offset.value = 0;
-    if (swipe === "LEFT") {
-      offset.value = withSequence(
-        withTiming(-width / 3, { duration: DURATION }),
+    if (swipeDirection === "LEFT") {
+      swipeOffset.value = withSequence(
+        withTiming(-windowWidth / 3, { duration: DURATION }),
         withDelay(
-          100,
-          withTiming(-width, { duration: DURATION }, onAnimationComplete)
+          DELAY,
+          withTiming(-windowWidth, { duration: DURATION }, onAnimationComplete)
         )
       );
-    } else if (swipe === "RIGHT") {
-      offset.value = withSequence(
-        withTiming(width / 4, { duration: DURATION }),
+    } else if (swipeDirection === "RIGHT") {
+      swipeOffset.value = withSequence(
+        withTiming(windowWidth / 4, { duration: DURATION }),
         withDelay(
-          100,
-          withTiming(width, { duration: DURATION }, onAnimationComplete)
+          DELAY,
+          withTiming(windowWidth, { duration: DURATION }, onAnimationComplete)
         )
       );
     }
-  }, [swipe, cardElements]);
+  }, [swipeDirection]);
 
   const swipeableCardStyles = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          translateX: offset.value,
+          translateX: swipeOffset.value,
         },
         {
           rotate: `${interpolate(
-            offset.value,
+            swipeOffset.value,
             [0, LAST_SWIPABLE_POINT],
-            [0, 8]
+            [0, 10],
+            Extrapolate.EXTEND
           )}deg`,
         },
         {
           scale: interpolate(
             cardScale.value,
             [0, 1],
-            [0.91, 1],
+            [0.86, 1],
             Extrapolate.CLAMP
           ),
         },
         {
           translateY: interpolate(
-            initialAniamtion.value,
+            initialAnimation.value,
             [0, 1],
-            [-16, 30],
+            [-9, 30],
             Extrapolate.CLAMP
           ),
         },
       ],
       opacity: interpolate(
-        initialAniamtion.value,
+        initialAnimation.value,
         [0, 1],
         [0.9, 1],
         Extrapolate.CLAMP
@@ -174,24 +182,24 @@ export const SwipeableCard = ({
       transform: [
         {
           scale: interpolate(
-            Math.abs(offset.value),
-            [-width / 2, width / 2],
-            [0.8, 0.9],
+            Math.abs(swipeOffset.value),
+            [0, windowWidth],
+            [0.8, 0.85],
             Extrapolate.CLAMP
           ),
         },
         {
           translateY: interpolate(
-            initialAniamtion.value,
-            [0, 1],
+            Math.abs(swipeOffset.value),
+            [0, windowWidth],
             [-16, -9],
             Extrapolate.CLAMP
           ),
         },
       ],
       opacity: interpolate(
-        Math.abs(offset.value),
-        [-width / 2, width / 2],
+        Math.abs(swipeOffset.value),
+        [0, windowWidth],
         [0.5, 0.9],
         Extrapolate.CLAMP
       ),
@@ -200,64 +208,37 @@ export const SwipeableCard = ({
 
   return (
     <>
-      {cardElements?.[1] ? (
+      {nextTodoData ? (
         <Animated.View
-          style={[
-            {
-              height: 300,
-              width: 300,
-              borderRadius: 20,
-            },
-            {
-              backgroundColor: "#fff",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "absolute",
-            },
-            queuedCardStyles,
-          ]}
+          style={[styles.card, { position: "absolute" }, queuedCardStyles]}
         >
-          <Text
-            style={{
-              fontSize: 18,
-              fontWeight: "bold",
-              color: "#5C98AA",
-            }}
-          >
-            {cardElements[1]}
-          </Text>
+          <Text style={styles.text}>{nextTodoData}</Text>
         </Animated.View>
       ) : null}
-      {cardElements?.[0] ? (
+
+      {currentTodoData ? (
         <GestureDetector gesture={pan}>
-          <Animated.View
-            style={[
-              {
-                zIndex: 999,
-                height: 300,
-                width: 300,
-                borderRadius: 20,
-              },
-              {
-                backgroundColor: "#fff",
-                alignItems: "center",
-                justifyContent: "center",
-              },
-              swipeableCardStyles,
-            ]}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontWeight: "bold",
-                color: "#5C98AA",
-              }}
-            >
-              {cardElements[0]}
-            </Text>
+          <Animated.View style={[styles.card, swipeableCardStyles]}>
+            <Text style={styles.text}>{currentTodoData}</Text>
           </Animated.View>
         </GestureDetector>
       ) : null}
     </>
   );
 };
+
+const styles = StyleSheet.create({
+  card: {
+    height: 300,
+    width: 300,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  text: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#5C98AA",
+  },
+});
