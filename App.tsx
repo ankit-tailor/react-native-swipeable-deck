@@ -14,8 +14,10 @@ const tasks = [
 ];
 
 export default function App() {
-  const [todos, setTodos] = useState<any[]>(tasks);
-  const [swipeAction, setSwipeAction] = useState<"LEFT" | "RIGHT" | "">("");
+  const [todos, setTodos] = useState<any[]>([...tasks, ...tasks, ...tasks]);
+  const [swipeDirection, setSwipeDirection] = useState<"LEFT" | "RIGHT" | "">(
+    ""
+  );
 
   const updateTodos = () => {
     setTodos(todos.slice(1));
@@ -55,17 +57,16 @@ export default function App() {
             </Animated.Text>
           ) : (
             <SwipeableCard
-              updateArr={updateTodos}
-              cardElements={todos.slice(0, 2)}
-              swipe={swipeAction}
-              setSwipe={setSwipeAction}
+              todos={todos}
+              swipeDirection={swipeDirection}
+              setSwipeDirection={setSwipeDirection}
             />
           )}
         </View>
         {todos.length > 0 ? (
           <View style={styles.ctaWrapper}>
             <AnimatedButton
-              onPress={() => setSwipeAction("LEFT")}
+              onPress={() => setSwipeDirection("LEFT")}
               _animatedWrapperStyle={[
                 StyleSheet.absoluteFill,
                 styles.animatedWrapper,
@@ -88,7 +89,7 @@ export default function App() {
               <Text style={styles.buttonText}>Save it later</Text>
             </AnimatedButton>
             <AnimatedButton
-              onPress={() => setSwipeAction("RIGHT")}
+              onPress={() => setSwipeDirection("RIGHT")}
               _animatedWrapperStyle={[
                 StyleSheet.absoluteFill,
                 styles.animatedWrapper,
@@ -142,12 +143,13 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#f1f1f1",
     textAlign: "center",
+    marginVertical: 32,
   },
   ctaWrapper: {
     justifyContent: "space-between",
     flexDirection: "row",
     width: "100%",
     paddingHorizontal: 24,
-    marginTop: 64,
+    marginTop: 72,
   },
 });
